@@ -1,0 +1,84 @@
+start:
+1 2 3
+X 4 6
+7 5 8
+
+goal:
+1 2 3
+4 5 6
+7 8 X
+
+moves = 3 -> heuristic 1
+
+moves = 3 -> heuristic 2
+
+moves = 3 -> heuristic 1 + 2
+
+
+start:
+1 2 3
+8 X 4
+7 6 5
+
+goal:
+
+2 8 1
+X 4 3
+7 6 5
+
+moves = NOT FOUND
+
+moves = 13 -> heuristic 2
+
+moves = 13 -> heuristic 1 + 2
+
+
+start:
+8 X 6
+5 4 7
+2 3 1
+
+goal:
+X 1 2
+3 4 5
+6 7 8
+
+moves = NOT FOUND
+
+moves = 47 -> heuristic 2
+
+moves = 45 -> heuristic 1 + 2
+
+
+start:
+1 2 3
+8 X 4
+7 6 5
+
+goal:
+2 8 1
+X 4 3
+7 6 5
+
+moves = NOT FOUND
+
+moves = 13 -> heuristic 2
+
+moves = 13 -> heuristic 1 + 2
+
+
+start:
+2 6 1
+X 7 8
+3 5 4
+
+goal:
+1 2 3
+4 5 6
+7 8 X
+
+moves = NOT FOUND
+
+moves = 325 -> heuristic 2
+
+moves = 177 -> heuristic 1 + 2
