@@ -3,21 +3,36 @@ import time
 
 
 class Node:
-    def __init__(self, matrix, depth):
+    def __init__(self, matrix, depth, direction):
         self.matrix = matrix
         self.depth = depth
+        self.direction = direction
+
+
+    """
+    Funkcia na vygenerovanie pohybov postupne v poradi: hore, dole, vlavo, vpravo a v pripade, ze pohyb nie je mozny
+    vrati None, inak ulozi stavy po pohyboch do pola
+    """
+
 
     def move(self, start):
         x, y = find_char(start, "X")
-        # moves = [[x - 1, y], [x, y + 1], [x, y - 1], [x + 1, y]]
         moves = [[x, y - 1], [x, y + 1], [x - 1, y], [x + 1, y]]
-        moves_words = [["up"], ["down"], ["left"], ["right"]]
+        move_word = ["up", "down", "left", "right"]
         nodes = []
+        count = 0
         for move in moves:
             children = check_move(start, x, y, move[0], move[1])
             if children:
-                nodes.append(children)
+                new = Node(children, 0, move_word[count])
+                nodes.append(new)
+            count += 1
         return nodes
+
+
+"""
+Funkcia na kontrolu, ci je mozny pohyb, kontroluje, ci policko po pohybe nevyjde z matice
+"""
 
 
 def check_move(data, x, y, x1, y1):
@@ -31,6 +46,12 @@ def check_move(data, x, y, x1, y1):
         return None
 
 
+
+"""
+Pomocna funckia na prekopirovanie stavu do noveho pola
+"""
+
+
 def copy(data):
     copy = []
     for node in data:
@@ -41,11 +62,21 @@ def copy(data):
     return copy
 
 
+"""
+Funkcia ktora vrati x a y suradnicu pre lubovolny znak zo stavu matice
+"""
+
+
 def find_char(map, character):
     for y in range(len(map)):
         for x in range(len(map[y])):
             if map[y][x] == character:
                 return x, y
+
+
+"""
+Heuristika 1, spocita pocet cisel, ktore su na zlej pozicii oproti cielovemu stavu
+"""
 
 
 def heuristic_one(start, goal):
@@ -55,6 +86,11 @@ def heuristic_one(start, goal):
             if start[i][j] != goal[i][j]:
                 number += 1
     return number
+
+
+"""
+Funkcia na vytvorenie 2. heuristiky, kontroluje kolko pohybov potrebuje kazde cislo spravit, aby dosiahlo cielovy stav
+"""
 
 
 def heuristic_two(node, goal):
@@ -72,6 +108,11 @@ def manhattan_distance(x1, x2, y1, y2):
     return abs(x2 - x1) + abs((y2 - y1))
 
 
+"""
+Funckia na ziskanie ohoddnotenia podla heuristiky a vratenie tejto hodnoty
+"""
+
+
 def get_distances(node, goal, heuristics):
     if heuristics == 1:
         return heuristic_one(node, goal)
@@ -80,64 +121,103 @@ def get_distances(node, goal, heuristics):
     elif heuristics == 3:
         return heuristic_one(node, goal) + heuristic_two(node, goal)
 
+
+"""
+Hlavna funckia na riesenie stavov
+"""
+
+
 def solve(start, goal, heuristic):
+    #Pomocne polia
+    # V opened su stavy, ktore este nie su zapisane
+    # V closed su stavy, ktore speju k spravnemu rieseniu
     opened = []
     closed = []
     moves = 0
-    init = Node(start, 0)
+    #Inicializacia prveho stavu a pridanie do opened listu
+    init = Node(start, 0, "start")
     opened.append(init)
     while True:
+
+        #Spracovanie prveho stavu z opened list, ktory je utriedeny podla heuristik od najmensej po najvacsiu
+
         current = opened[0]
+
+        #Kontrola, ci nebol najdeny koncovy stav, v pripade, ze bol, funkcia vrati vsetky vykonane stavy a pocet vykonanych
+        # pohybuv
+
         if get_distances(current.matrix, goal, heuristic) == 0 and get_distances(current.matrix, start, heuristic) != 0:
             closed.append(current)
             return closed, moves
+
+        #Volanie funkcie na vygenerovanie pohybov a ulozenie do pola
         nodes = current.move(current.matrix)
         appended = 0
         for node in nodes:
+            node.depth = current.depth + 1
             if closed:
                 flag = 1
+                # Kontrola, ci sa stav uz nenachadza v poli, kde su ulozene stavy spejuce k rieseniu
                 for close in closed:
-                    if get_distances(node, close.matrix, heuristic) == 0:
+                    if get_distances(node.matrix, close.matrix, heuristic) == 0:
                         flag = 0
                         break
+                #Ak sa taky stav este nenachadza, prida sa do opened listu
                 if flag:
-                    new = Node(node, current.depth + 1)
-                    opened.append(new)
+                    #new = Node(node, current.depth + 1)
+                    opened.append(node)
                     appended += 1
             else:
-                new = Node(node, current.depth + 1)
-                opened.append(new)
+                #new = Node(node, current.depth + 1)
+                opened.append(node)
                 appended += 1
+        #V pripade, ze vsetky vygenerovane stavy sa uz nachadzaju v closed poli, vyberie sa jeden nahodny z pola, kde
+        #kde su ulozene pohyby z current stavu
         if appended == 0:
             max_range = len(nodes) - 1
             index = random.randrange(0, max_range)
-            new = Node(nodes[index], current.depth + 1)
-            opened.append(new)
+            #new = Node(nodes[index], current.depth + 1)
+            opened.append(nodes[index])
+
+        #Pridanie current stavu nakoniec closed pola
         closed.append(current)
+
+        #Odstranenie prveho zaznamu z opened pola
         opened = opened[1:]
 
+        #Zoradenie opened listu podla heuristik od najmensej
         opened.sort(key=lambda x: get_distances(x.matrix, goal, heuristic))
 
+        #Kontrola, ci na prvom mieste v poli sa nenachadza stav, ktory sa vykonal skor ako current stav. Ak ano, tento stav
+        # sa vymaze a cyklus pokracuje dovtedy, dokym stav v opened liste sa nenachadza hlbsie ako current stav
         while opened[0].depth <= current.depth:
             opened = opened[1:]
-            if not opened:
-                break
-        if not opened:
-            print("\n\t\t\tEmpty opened list")
-            return None, 0
 
-        if moves > 1000:
-            print("\n\t\t\tUnable to find solution with 1000 moves executed")
+        #Osetrenie ci pocet vykonanych pohybov nie je vacsi ako 500
+        if moves > 500:
+            print("\n\t\t\tUnable to find solution with {} moves executed".format(moves))
             return None, moves
         moves += 1
 
 
+"""
+Funkcia na vypisanie vykonanych krokov
+"""
+
+
 def print_result(closed, moves):
     for close in closed:
+        print(close.direction.upper() + "\n")
         for i in close.matrix:
             print(i)
         print()
     print("Made: " + str(moves) + " moves")
+
+
+"""
+Funkcia na zistenie poctu inverzii v pociatocnom stave. Pocet inverzii sa zvacsi v pripade, ze hocikde po lubovolnom znaku
+z pola sa nachadza znak s mensou hodnotou
+"""
 
 
 def get_inversions(start):
@@ -148,6 +228,11 @@ def get_inversions(start):
                 inversions += 1
 
     return inversions
+
+
+"""
+Kontrola, ci je stav riesitelny
+"""
 
 
 def check_solvable(start):
@@ -163,12 +248,23 @@ def check_solvable(start):
     return 0
 
 
+"""
+Pomocna funkcia na prekonvertovanie list of list na obycajny list
+"""
+
+
 def convert_to_list(start):
     new = []
     for sublist in start:
         for char in sublist:
             new.append(char)
     return new
+
+
+
+"""
+Funkcia na nacitanie pociatocneho a koncoveho stavu zo suborov do pola
+"""
 
 
 def load_from_file():
@@ -190,6 +286,7 @@ def load_from_file():
 
 
 start_matrix, goal_matrix = load_from_file()
+
 if check_solvable(start_matrix):
 
     start = time.time()
