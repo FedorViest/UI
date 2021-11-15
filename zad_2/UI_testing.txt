@@ -79,9 +79,9 @@ goal:
 
 moves = NOT FOUND
 
-moves = 325 -> heuristic 2
+moves = 325 -> heuristic 2, time : 6.03 s
 
-moves = 177 -> heuristic 1 + 2
+moves = 177 -> heuristic 1 + 2, time : 2.03 s
 
 
 start:
@@ -109,6 +109,6 @@ goal:
 4 5 6
 7 8 X
 
-H1: NF
-H2: moves = 361, time = 10.1 s
-H3: moves = 501, time = 20.5 s
+H1: moves = 1449, time = 14.04 s
+H2: moves = 361, time = 7.48 s
+H3: moves = 501, time = 15.53 s

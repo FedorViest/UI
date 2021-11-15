@@ -127,7 +127,8 @@ Hlavna funckia na riesenie stavov
 """
 
 
-def solve(start, goal, heuristic):
+def solve(start, goal, heuristic, time_limit):
+    time_start = time.time()
     #Pomocne polia
     # V opened su stavy, ktore este nie su zapisane
     # V closed su stavy, ktore speju k spravnemu rieseniu
@@ -148,7 +149,7 @@ def solve(start, goal, heuristic):
 
         if get_distances(current.matrix, goal, heuristic) == 0 and get_distances(current.matrix, start, heuristic) != 0:
             closed.append(current)
-            return closed, moves
+            return closed, moves, time.time() - time_start
 
         #Volanie funkcie na vygenerovanie pohybov a ulozenie do pola
         nodes = current.move(current.matrix)
@@ -194,9 +195,9 @@ def solve(start, goal, heuristic):
             opened = opened[1:]
 
         #Osetrenie ci pocet vykonanych pohybov nie je vacsi ako 500
-        if moves > 500:
-            print("\n\t\t\tUnable to find solution with {} moves executed".format(moves))
-            return None, moves
+        if time.time() - time_start > time_limit:
+            print("\n\t\tTime limit of {} seconds exceeded\n\t   Unable to find solution in given time limit".format(int(time.time() - time_start)))
+            return None, moves, time.time() - time_start
         moves += 1
 
 
@@ -207,59 +208,11 @@ Funkcia na vypisanie vykonanych krokov
 
 def print_result(closed, moves):
     for close in closed:
-        print(close.direction.upper() + "\n")
+        print(close.direction.upper())
         for i in close.matrix:
             print(i)
         print()
     print("Made: " + str(moves) + " moves")
-
-
-"""
-Funkcia na zistenie poctu inverzii v pociatocnom stave. Pocet inverzii sa zvacsi v pripade, ze hocikde po lubovolnom znaku
-z pola sa nachadza znak s mensou hodnotou
-"""
-
-
-def get_inversions(start):
-    inversions = 0
-    for i in range(0, len(start)):
-        for j in range(i + 1, len(start)):
-            if start[j] != "X" and start[i] != "X" and start[i] > start[j]:
-                inversions += 1
-
-    return inversions
-
-
-"""
-Kontrola, ci je stav riesitelny
-"""
-
-
-def check_solvable(start):
-    new_list = convert_to_list(start)
-    if len(new_list) % 2 == 1:
-        if get_inversions(new_list) % 2 == 0:
-            return 1
-    else:
-        x, y = find_char(start, "X")
-        pos_blank = len(start) - y
-        if pos_blank % 2 == 1 and get_inversions(new_list) % 2 == 0 or pos_blank % 2 == 0 and get_inversions(new_list) % 2 == 1:
-            return 1
-    return 0
-
-
-"""
-Pomocna funkcia na prekonvertovanie list of list na obycajny list
-"""
-
-
-def convert_to_list(start):
-    new = []
-    for sublist in start:
-        for char in sublist:
-            new.append(char)
-    return new
-
 
 
 """
@@ -287,31 +240,29 @@ def load_from_file():
 
 start_matrix, goal_matrix = load_from_file()
 
-if check_solvable(start_matrix):
+time_limit = int(input("Please select time limit for solving (in seconds): "))
 
-    start = time.time()
-    print("\t\t\t\tHeuristic number one:\n\t\tHeuristic function = Number of misplaced tiles")
-    closed, moves = solve(start_matrix, goal_matrix, 1)
-    end = time.time()
-    if closed:
-        print("\n\t\t\tSolution found in " + str(end-start) + " seconds\n")
-        print_result(closed, moves)
+start = time.time()
+print("\t\t\t\tHeuristic number one:\n\t\tHeuristic function = Number of misplaced tiles")
+closed, moves, time_took = solve(start_matrix, goal_matrix, 1, time_limit)
+end = time.time()
+if closed:
+    print("\n\t\t\tSolution found in " + str(end-start) + " seconds\n")
+    print_result(closed, moves)
 
-    start = time.time()
-    print("\n\n\n\t\t\t\tHeuristic number two:\n\t\tHeuristic function = Manhattan distance")
-    closed, moves = solve(start_matrix, goal_matrix, 2)
-    end = time.time()
-    if closed:
-        print("\n\t\t\tSolution found in " + str(end - start) + " seconds\n")
-        print_result(closed, moves)
+start = time.time()
+print("\n\n\n\t\t\t\tHeuristic number two:\n\t\tHeuristic function = Manhattan distance")
+closed, moves, time_took = solve(start_matrix, goal_matrix, 2, time_limit)
+end = time.time()
+if closed:
+    print("\n\t\t\tSolution found in " + str(time_took) + " seconds\n")
+    print_result(closed, moves)
 
-    start = time.time()
-    print("\n\n\n\t\t\t\tHeuristic number three:\n\t\tHeuristic function = Combination of heuristics 1 and 2")
-    closed, moves = solve(start_matrix, goal_matrix, 3)
-    end = time.time()
-    if closed:
-        print("\n\t\t\tSolution found in " + str(end - start) + " seconds\n")
-        print_result(closed, moves)
+start = time.time()
+print("\n\n\n\t\t\t\tHeuristic number three:\n\t\tHeuristic function = Combination of heuristics 1 and 2")
+closed, moves, time_took = solve(start_matrix, goal_matrix, 3, time_limit)
+end = time.time()
+if closed:
+    print("\n\t\t\tSolution found in " + str(end - start) + " seconds\n")
+    print_result(closed, moves)
 
-else:
-    print("This puzzle is unsolvable")
