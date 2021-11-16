@@ -1,9 +1,11 @@
 import random
 import sys
+import time
 from copy import deepcopy
+import matplotlib.pyplot as plt
 
 
-def start(file_name, tabu_size):
+def start(file_name, tabu_size, run, threshold):
     garden = create_map("subor" + str(file_name))
     rocks = print_map(garden)
     height = len(garden)
@@ -13,62 +15,87 @@ def start(file_name, tabu_size):
 
     print("\nDimensions:\t" + str(width) + "x" + str(height) + "\tRocks: " + str(rocks))
 
-    solution, path = tabu_search(garden, tabu_size, max_tiles, height, width)
+    solution, path, fitness, best_fitness, generations = tabu_search(garden, tabu_size, max_tiles, height, width, threshold)
     print("\n\n")
     print_map(solution)
     number = 1
     print()
     for i in path:
-        print("\tRoute number:\t" + str(number) + "\t==>\t" + str(i))
+        print("\tRoute number: " + str(number) + "\tRoute length: " + str(len(i)) + "\n\t\t==>\t" + str(i) + "\n\n")
         number += 1
 
+    plt.plot(generations, fitness, label='Fitness', color='red')
+    plt.legend()
+    plt.plot(generations, best_fitness, label='Best fitness', color='black')
+    plt.legend()
+    plt.xlabel("Generation")
+    plt.ylabel("Fitness")
+    plt.title("Max tabu list size: " + str(tabu_size) + " Run: " + str(run) +
+              " Generations: " + str(generations[len(generations) - 1]) + " Threshold: " + str(threshold))
+    plt.show()
 
-def tabu_search(garden, tabu_size, tiles, height, width, iterations=2000, gens=3000):
-    tabu_list = []
+    return generations[len(generations) - 1]
+
+
+def tabu_search(garden, tabu_size, tiles, height, width, threshold, gens=3000):
     best_garden = deepcopy(garden)
-    best_fitness = get_fitness(best_garden, tiles)
     border = init_borders(height, width)
-    tabu_list.append(best_garden)
-    path = []
     gen = 1
+    random.shuffle(border)
+    best_garden_fitness = tiles
+    tabu_list, fitnesses = [], []
+    path, best_path = [], []
+    all_fitness, all_best_fitness, generations = [], [], []
     while True:
         if gen == gens:
-            return best_garden, path
-        borders = get_neighbour(border)
-        for iterator in range(iterations):
+            return best_garden, best_path, all_fitness, all_best_fitness, generations
+        iterator = 0
+        while True:
+            if iterator == threshold:
+                break
+            neighbour = get_neighbour(deepcopy(border))
             garden_copied = deepcopy(garden)
-            random.shuffle(border)
+            temp, temp_path = solve(garden_copied, neighbour, height, width)
+            fitnesses.append([get_fitness(temp, tiles), neighbour, temp, temp_path])
+            iterator += 1
 
-            temp, temp_path, incomplete = solve(garden_copied, borders, height, width)
-            if temp:
-                for element in tabu_list:
-                    fitness = get_fitness(temp, tiles)
-                    if compare_gardens(temp, element, height, width):
-                        if best_fitness >= fitness:
-                            best_garden = deepcopy(temp)
-                            path = deepcopy(temp_path)
-                            best_fitness = fitness
-                if len(tabu_list) >= tabu_size:
-                    tabu_list.pop(0)
-                tabu_list.append(best_garden)
-                if best_fitness == 0:
-                    return best_garden, path
+        sorted_borders = sorted(fitnesses, key=lambda x: x[0])
+        filled_map = []
+        if len(tabu_list) >= tabu_size:
+            tabu_list.pop(0)
+        for curr in sorted_borders:
+            if map_to_string(curr[1]) in tabu_list:
+                continue
+            border = curr[1]
+            path = curr[3]
+            tabu_list.append(map_to_string(curr[1]))
+            filled_map = curr[2]
+            break
 
-            sys.stdout.write("\r" + "Generation: " + str(gen) + " Fitness: " + str(best_fitness) +
-                             " Tabu length: " + str(len(tabu_list)) + " Iterations: " + str(iterator) + "/" + str(
-                            iterations))
+        fitness = get_fitness(filled_map, tiles)
 
-        if best_fitness == 0:
-            return best_garden, path
+        all_fitness.append(fitness)
+        all_best_fitness.append(best_garden_fitness)
+
+        if fitness < best_garden_fitness:
+            best_garden = deepcopy(filled_map)
+            best_garden_fitness = fitness
+            best_path = path
+        if best_garden_fitness == 0:
+            generations.append(gen)
+            return best_garden, best_path, all_fitness, all_best_fitness, generations
+
+        sys.stdout.write("\r" + "Generation: " + str(gen) + " Fitness: " + str(best_garden_fitness) +
+                         " Tabu length: " + str(len(tabu_list)))
         gen += 1
+        generations.append(gen)
 
 
-def compare_gardens(best, tabu, height, width):
-    for y in range(height):
-        for x in range(width):
-            if best[y][x] != tabu[y][x]:
-                return 1
-    return 0
+def map_to_string(garden):
+    string = ""
+    for i in garden:
+        string = string + str(i)
+    return string
 
 
 def get_neighbour(border):
@@ -100,15 +127,17 @@ def solve(garden, border, height, width):
         if garden_copied[start[0]][start[1]] != "0":
             continue
 
+        temp_map = deepcopy(garden_copied)
+        temp_full = deepcopy(full)
         garden_copied, path, incomplete = move(garden_copied, start, height, width, moves)
 
         full.append(path)
 
         if incomplete:
-            return None, None, 0
+            return temp_map, temp_full
         moves += 1
 
-    return garden_copied, full, incomplete
+    return garden_copied, full
 
 
 def init_borders(height, width):
@@ -287,4 +316,18 @@ def move(garden, start, height, width, move_count):
 
 file_name = int(input("Select file number (1-10): "))
 tabu_size = int(input("Select tabu list size: "))
-start(file_name, tabu_size)
+threshold = int(input("Select threshold (amount of generated neighbours): "))
+"""sizes = [500, 50, 10]
+thresholds = [5, 10, 20]
+for threshold in thresholds:
+    for tabu_size in sizes:
+        avg_gen = 0
+        t_start = time.time()
+        for i in range(10):
+            avg_gen += start(file_name, tabu_size, i + 1, threshold)
+        t_end = time.time()
+        avg_gen = avg_gen / 10
+        print("Tabu size: " + str(tabu_size) + " Threshold: " + str(threshold) + " Average generation: " + str(avg_gen))
+        print("Average time took:" + str((t_end - t_start) / 10) + "\n\n")"""
+
+start(file_name, tabu_size, 1, threshold)
